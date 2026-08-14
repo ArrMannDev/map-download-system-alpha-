@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function App() {
   const [formData, setFormData] = useState({
     name: "",
@@ -25,7 +27,7 @@ function App() {
     event.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/request-map", {
+      const response = await fetch(`${API_URL}/api/request-map`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -52,7 +54,7 @@ function App() {
     event.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/verify-otp", {
+      const response = await fetch(`${API_URL}/api/verify-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +159,7 @@ function App() {
 
           <p>Your map is ready to download.</p>
 
-          <a href={`http://localhost:5000/api/download/${requestId}`}>
+          <a href={`${API_URL}/api/download/${requestId}`}>
             <button>Download Map</button>
           </a>
         </div>

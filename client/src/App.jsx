@@ -169,5 +169,5 @@ function App() {
     </div>
   );
 }
-
+console.log("API URL:", API_URL);
 export default App;

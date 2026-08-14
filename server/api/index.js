@@ -9,15 +9,29 @@ const sendOtpEmail = require("../mailer");
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://map-download-system-alpha.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://map-download-system-alpha.vercel.app",
-    ],
-    methods: ["GET", "POST"],
+    origin: function (origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
 app.use(express.json());
 
 app.get("/api", (req, res) => {
@@ -54,7 +68,7 @@ app.post("/api/request-map", async (req, res) => {
     .select();
 
   if (error) {
-    console.error(error);
+    console.error("Supabase insert error:", error);
 
     return res.status(500).json({
       message: "Failed to save map request",
@@ -64,14 +78,14 @@ app.post("/api/request-map", async (req, res) => {
   try {
     await sendOtpEmail(email, otp);
   } catch (emailError) {
-    console.error(emailError);
+    console.error("Email error:", emailError);
 
     return res.status(500).json({
       message: "Request saved, but OTP email failed",
     });
   }
 
-  res.status(201).json({
+  return res.status(201).json({
     message: "OTP sent to your email",
     requestId: data[0].id,
   });
@@ -127,12 +141,14 @@ app.post("/api/verify-otp", async (req, res) => {
     .eq("id", requestId);
 
   if (updateError) {
+    console.error("Verification update error:", updateError);
+
     return res.status(500).json({
       message: "Failed to verify request",
     });
   }
 
-  res.json({
+  return res.json({
     message: "OTP verified successfully",
   });
 });
@@ -174,7 +190,17 @@ app.get("/api/download/:requestId", async (req, res) => {
 
   const filePath = path.join(process.cwd(), "maps", fileName);
 
-  res.download(filePath, fileName);
+  return res.download(filePath, fileName, (downloadError) => {
+    if (downloadError) {
+      console.error("Download error:", downloadError);
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Failed to download map",
+        });
+      }
+    }
+  });
 });
 
 module.exports = app;

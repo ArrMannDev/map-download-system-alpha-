@@ -1,7 +1,9 @@
 require("dotenv").config();
-const path = require("path");
+
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+
 const supabase = require("./supabase");
 const sendOtpEmail = require("./mailer");
 
@@ -9,8 +11,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-const PORT = 5000;
 
 app.get("/", (req, res) => {
   res.json({
@@ -119,8 +119,6 @@ app.post("/api/verify-otp", async (req, res) => {
     .eq("id", requestId);
 
   if (updateError) {
-    console.error(updateError);
-
     return res.status(500).json({
       message: "Failed to verify request",
     });
@@ -168,13 +166,7 @@ app.get("/api/download/:requestId", async (req, res) => {
 
   const filePath = path.join(__dirname, "maps", fileName);
 
-  res.download(filePath, fileName, (error) => {
-    if (error) {
-      console.error("Download error:", error);
-    }
-  });
+  res.download(filePath, fileName);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port http://localhost:${PORT}`);
-});
+module.exports = app;

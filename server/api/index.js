@@ -34,13 +34,13 @@ app.use(
 
 app.use(express.json());
 
-app.get("/api", (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     message: "DPS Map Download API is running",
   });
 });
 
-app.post("/api/request-map", async (req, res) => {
+app.post("/request-map", async (req, res) => {
   const { name, email, mapName } = req.body;
 
   if (!name || !email || !mapName) {
@@ -91,7 +91,7 @@ app.post("/api/request-map", async (req, res) => {
   });
 });
 
-app.post("/api/verify-otp", async (req, res) => {
+app.post("/verify-otp", async (req, res) => {
   const { requestId, otp } = req.body;
 
   if (!requestId || !otp) {
@@ -153,7 +153,7 @@ app.post("/api/verify-otp", async (req, res) => {
   });
 });
 
-app.get("/api/download/:requestId", async (req, res) => {
+app.get("/download/:requestId", async (req, res) => {
   const { requestId } = req.params;
 
   const { data, error } = await supabase

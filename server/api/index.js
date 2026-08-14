@@ -9,7 +9,15 @@ const sendOtpEmail = require("../mailer");
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://map-download-system-alpha.vercel.app",
+    ],
+    methods: ["GET", "POST"],
+  }),
+);
 app.use(express.json());
 
 app.get("/api", (req, res) => {

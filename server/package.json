@@ -1,8 +1,10 @@
 {
+  {
   "scripts": {
-    "dev": "nodemon local.js",
-    "start": "node local.js"
-  },
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  }
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "cors": "^2.8.6",

@@ -4,31 +4,19 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
-const supabase = require("../supabase");
-const sendOtpEmail = require("../mailer");
+const supabase = require("./supabase");
+const sendOtpEmail = require("./mailer");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://map-download-system-alpha.vercel.app",
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: [
+      "http://localhost:5173",
+      "https://map-download-system-alpha.vercel.app",
+    ],
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type"],
   }),
 );
 
@@ -40,7 +28,7 @@ app.get("/", (req, res) => {
   });
 });
 
-app.post("/request-map", async (req, res) => {
+app.post("/api/request-map", async (req, res) => {
   const { name, email, mapName } = req.body;
 
   if (!name || !email || !mapName) {
@@ -68,7 +56,7 @@ app.post("/request-map", async (req, res) => {
     .select();
 
   if (error) {
-    console.error("Supabase insert error:", error);
+    console.error(error);
 
     return res.status(500).json({
       message: "Failed to save map request",
@@ -78,7 +66,7 @@ app.post("/request-map", async (req, res) => {
   try {
     await sendOtpEmail(email, otp);
   } catch (emailError) {
-    console.error("Email error:", emailError);
+    console.error(emailError);
 
     return res.status(500).json({
       message: "Request saved, but OTP email failed",
@@ -91,7 +79,7 @@ app.post("/request-map", async (req, res) => {
   });
 });
 
-app.post("/verify-otp", async (req, res) => {
+app.post("/api/verify-otp", async (req, res) => {
   const { requestId, otp } = req.body;
 
   if (!requestId || !otp) {
@@ -141,8 +129,6 @@ app.post("/verify-otp", async (req, res) => {
     .eq("id", requestId);
 
   if (updateError) {
-    console.error("Verification update error:", updateError);
-
     return res.status(500).json({
       message: "Failed to verify request",
     });
@@ -153,7 +139,7 @@ app.post("/verify-otp", async (req, res) => {
   });
 });
 
-app.get("/download/:requestId", async (req, res) => {
+app.get("/api/download/:requestId", async (req, res) => {
   const { requestId } = req.params;
 
   const { data, error } = await supabase
@@ -190,17 +176,7 @@ app.get("/download/:requestId", async (req, res) => {
 
   const filePath = path.join(process.cwd(), "maps", fileName);
 
-  return res.download(filePath, fileName, (downloadError) => {
-    if (downloadError) {
-      console.error("Download error:", downloadError);
-
-      if (!res.headersSent) {
-        res.status(500).json({
-          message: "Failed to download map",
-        });
-      }
-    }
-  });
+  return res.download(filePath, fileName);
 });
 
 module.exports = app;

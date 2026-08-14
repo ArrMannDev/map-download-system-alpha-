@@ -4,8 +4,8 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
-const supabase = require("./supabase");
-const sendOtpEmail = require("./mailer");
+const supabase = require("../supabase");
+const sendOtpEmail = require("../mailer");
 
 const app = express();
 
@@ -164,7 +164,7 @@ app.get("/api/download/:requestId", async (req, res) => {
     });
   }
 
-  const filePath = path.join(__dirname, "maps", fileName);
+  const filePath = path.join(process.cwd(), "maps", fileName);
 
   res.download(filePath, fileName);
 });

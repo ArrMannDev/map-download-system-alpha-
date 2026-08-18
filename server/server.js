@@ -9,25 +9,19 @@ const sendOtpEmail = require("./mailer");
 
 const app = express();
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://map-download-system-alpha.vercel.app",
-    ],
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-  }),
-);
-
+app.use(cors());
 app.use(express.json());
 
+const PORT = 5000;
+
+// TEST ROUTE
 app.get("/", (req, res) => {
   res.json({
     message: "DPS Map Download API is running",
   });
 });
 
+// REQUEST MAP + SEND OTP
 app.post("/api/request-map", async (req, res) => {
   const { name, email, mapName } = req.body;
 
@@ -37,10 +31,13 @@ app.post("/api/request-map", async (req, res) => {
     });
   }
 
+  // Generate 6 digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+  // OTP expires after 5 minutes
   const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+  // Save request to Supabase
   const { data, error } = await supabase
     .from("map_requests")
     .insert([
@@ -56,17 +53,21 @@ app.post("/api/request-map", async (req, res) => {
     .select();
 
   if (error) {
-    console.error(error);
+  console.error("SUPABASE ERROR:", error);
 
-    return res.status(500).json({
-      message: "Failed to save map request",
-    });
-  }
+  return res.status(500).json({
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  });
+}
 
+  // Send OTP email
   try {
     await sendOtpEmail(email, otp);
-  } catch (emailError) {
-    console.error(emailError);
+  } catch (error) {
+    console.error("Email error:", error);
 
     return res.status(500).json({
       message: "Request saved, but OTP email failed",
@@ -79,6 +80,7 @@ app.post("/api/request-map", async (req, res) => {
   });
 });
 
+// VERIFY OTP
 app.post("/api/verify-otp", async (req, res) => {
   const { requestId, otp } = req.body;
 
@@ -88,6 +90,7 @@ app.post("/api/verify-otp", async (req, res) => {
     });
   }
 
+  // Find request
   const { data, error } = await supabase
     .from("map_requests")
     .select("*")
@@ -100,12 +103,14 @@ app.post("/api/verify-otp", async (req, res) => {
     });
   }
 
+  // Already verified
   if (data.verified) {
     return res.status(400).json({
       message: "This request is already verified",
     });
   }
 
+  // Check expiry
   const currentTime = new Date();
   const expiryTime = new Date(data.otp_expires_at);
 
@@ -115,12 +120,14 @@ app.post("/api/verify-otp", async (req, res) => {
     });
   }
 
+  // Check OTP
   if (data.otp !== otp.toString()) {
     return res.status(400).json({
       message: "Invalid OTP",
     });
   }
 
+  // Update verified status
   const { error: updateError } = await supabase
     .from("map_requests")
     .update({
@@ -129,6 +136,8 @@ app.post("/api/verify-otp", async (req, res) => {
     .eq("id", requestId);
 
   if (updateError) {
+    console.error("Update error:", updateError);
+
     return res.status(500).json({
       message: "Failed to verify request",
     });
@@ -139,9 +148,11 @@ app.post("/api/verify-otp", async (req, res) => {
   });
 });
 
+// PROTECTED MAP DOWNLOAD
 app.get("/api/download/:requestId", async (req, res) => {
   const { requestId } = req.params;
 
+  // Find request
   const { data, error } = await supabase
     .from("map_requests")
     .select("*")
@@ -154,6 +165,7 @@ app.get("/api/download/:requestId", async (req, res) => {
     });
   }
 
+  // Must verify OTP first
   if (!data.verified) {
     return res.status(403).json({
       message: "OTP verification required",
@@ -174,9 +186,16 @@ app.get("/api/download/:requestId", async (req, res) => {
     });
   }
 
-  const filePath = path.join(process.cwd(), "maps", fileName);
+  const filePath = path.join(__dirname, "maps", fileName);
 
-  return res.download(filePath, fileName);
+  res.download(filePath, fileName, (error) => {
+    if (error) {
+      console.error("Download error:", error);
+    }
+  });
 });
 
-module.exports = app;
+// START SERVER
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
